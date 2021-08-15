@@ -26,6 +26,7 @@ protected:
 	shared_ptr<CConfigFile>	_config = nullptr;
 
 	void LoadConfig();
+	bool IsProtoFileHasService(const CString& protoPath);
 public:
 	CEdit _editProtocPath;
 	CEdit _editPluginPath;

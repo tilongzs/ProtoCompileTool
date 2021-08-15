@@ -160,6 +160,30 @@ void CProtoCompileToolDlg::LoadConfig()
 	}
 }
 
+bool CProtoCompileToolDlg::IsProtoFileHasService(const CString& protoPath)
+{
+	bool isHas = false;
+	CStdioFile file;
+	if (!file.Open(protoPath, CFile::modeRead))
+	{
+		return isHas;
+	}
+
+	WCHAR buf[BUFSIZ + 1];
+	while (file.ReadString(buf, BUFSIZ))
+	{
+		// 通过检查是否包含service 来判断是否是RPC文件
+		if (wcsstr(buf, L"service ") != nullptr)
+		{
+			isHas = true;
+			break;
+		}
+	}
+
+	file.Close();
+	return isHas;
+}
+
 void CProtoCompileToolDlg::OnBtnProtocPath()
 {
 	CString defaultDir = GetModuleDir();	//默认打开的文件路径
@@ -378,8 +402,12 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 		// 生成gRPC类文件
 		if (!pluginPath.IsEmpty())
 		{
-			param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
-			ShellExecute(NULL, L"open", protocPath, param, NULL, SW_HIDE);
+			// 检查该proto文件里是否包含service
+			if (IsProtoFileHasService(filePath))
+			{
+				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
+				ShellExecute(NULL, L"open", protocPath, param, NULL, SW_HIDE);
+			}		
 		}
 	}
 
