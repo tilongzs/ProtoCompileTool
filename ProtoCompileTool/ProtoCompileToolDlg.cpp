@@ -12,6 +12,7 @@
 #define new DEBUG_NEW
 #endif
 
+#define WMSG_FUNCTION		WM_USER + 1
 
 CProtoCompileToolDlg::CProtoCompileToolDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_PROTOCOMPILETOOL_DIALOG, pParent)
@@ -30,10 +31,12 @@ void CProtoCompileToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_PROTO_PATH, _editProtoPath);
 	DDX_Control(pDX, IDC_BTN_SAVE_PATH, _btnSavePath);
 	DDX_Control(pDX, IDC_BTN_PROTO_PATH, _btnProtoPath);
+	DDX_Control(pDX, IDC_EDIT_RECV, _editRecv);
 }
 
 BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
+	ON_MESSAGE(WMSG_FUNCTION, &CProtoCompileToolDlg::OnFunction)
 	ON_BN_CLICKED(IDC_BTN_PROTOC_PATH, &CProtoCompileToolDlg::OnBtnProtocPath)
 	ON_BN_CLICKED(IDC_BTN_PLUGIN_PATH, &CProtoCompileToolDlg::OnBtnPluginPath)
 	ON_BN_CLICKED(IDC_BTN_SAVE_PATH, &CProtoCompileToolDlg::OnBtnSavePath)
@@ -182,6 +185,64 @@ bool CProtoCompileToolDlg::IsProtoFileHasService(const CString& protoPath)
 
 	file.Close();
 	return isHas;
+}
+
+bool CProtoCompileToolDlg::RunProtoc(const CString& protocPath, CString param)
+{
+	PROCESS_INFORMATION ProceInfo;
+	SECURITY_ATTRIBUTES sa;
+	ZeroMemory(&sa, sizeof(sa));
+	sa.nLength = sizeof(sa);
+	sa.bInheritHandle = TRUE;
+	HANDLE hRead = NULL;
+	HANDLE hWrite = NULL;
+	if (!CreatePipe(&hRead, &hWrite, &sa, 0))
+	{
+		return false;
+	}
+
+	STARTUPINFO StartInfo;
+	ZeroMemory(&StartInfo, sizeof(StartInfo));
+	StartInfo.cb = sizeof(StartInfo);
+	StartInfo.wShowWindow = SW_HIDE;
+	//使用指定的句柄作为标准输入输出的文件句柄,使用指定的显示方式
+	StartInfo.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+	StartInfo.hStdError = hWrite;
+	StartInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+	StartInfo.hStdOutput = hWrite;
+
+	bool ret = true;
+	param.Format(L"%s %s", protocPath, param);
+	if (CreateProcess(nullptr, param.GetBuffer(), NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &StartInfo, &ProceInfo))
+	{
+		WaitForSingleObject(ProceInfo.hProcess, INFINITE);
+
+		CHAR chBuf[BUFSIZ] = {0};
+		DWORD dwRead = 0;
+		DWORD dwAvail = 0;
+		if (PeekNamedPipe(hRead, NULL, NULL, &dwRead, &dwAvail, NULL) && dwAvail > 0)//PeekNamePipe用来预览一个管道中的数据，用来判断管道中是否为空
+		{
+			BOOL bSuccess = ReadFile(hRead, chBuf, BUFSIZ, &dwRead, NULL); // 这里是读管道，即便已经没有数据，仍然会等待接收数据，所以才需要PeekNamePipe
+			if (bSuccess && dwRead != 0)
+			{
+				// 读取到错误消息
+				ret = false;
+				AppendMsg(CString(chBuf));
+			}
+		}
+
+		CloseHandle(ProceInfo.hThread);
+		CloseHandle(ProceInfo.hProcess);
+	}
+	else
+	{
+		ret = false;
+	}
+
+	CloseHandle(hRead);
+	CloseHandle(hWrite);
+
+	return ret;
 }
 
 void CProtoCompileToolDlg::OnBtnProtocPath()
@@ -397,7 +458,11 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	{
 		// 生成Protobuf消息类文件
 		param.Format(L"-I \"%s\" --cpp_out=\"%s\"  \"%s\"", PathGetDir(filePath), savePath, filePath);
-		ShellExecute(NULL, L"open", protocPath, param, NULL, SW_HIDE);
+		//ShellExecute(NULL, L"open", protocPath, param, NULL, SW_HIDE);
+		if (!RunProtoc(protocPath, param))
+		{
+			return;
+		}
 
 		// 生成gRPC类文件
 		if (!pluginPath.IsEmpty())
@@ -406,11 +471,16 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 			if (IsProtoFileHasService(filePath))
 			{
 				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
-				ShellExecute(NULL, L"open", protocPath, param, NULL, SW_HIDE);
+				//ShellExecute(NULL, L"open", protocPath, param, NULL, SW_HIDE);
+				if (!RunProtoc(protocPath, param))
+				{
+					return;
+				}
 			}		
 		}
 	}
 
+	AppendMsg(L"转换完成");
 	MessageBox(L"转换完成");
 }
 
@@ -419,3 +489,48 @@ void CProtoCompileToolDlg::OnBtnClearPluginPath()
 	_editPluginPath.SetWindowText(L"");
 	_config->SetString(CFGKEY_COMMON, CFG_PluginPath, L"");
 }
+
+void CProtoCompileToolDlg::AppendMsg(const WCHAR* msg)
+{
+	WCHAR* tmpMsg = new WCHAR[wcslen(msg) + 1];
+	memset(tmpMsg, 0, sizeof(WCHAR) * (wcslen(msg) + 1));
+	wsprintf(tmpMsg, msg);
+
+	TheadFunc* pFunc = new TheadFunc;
+	pFunc->Func = ([=]()
+		{
+			if (_editRecv.GetLineCount() > 100)
+			{
+				_editRecv.Clear();
+			}
+
+			CString curMsg;
+			_editRecv.GetWindowTextW(curMsg);
+			curMsg += "\r\n";
+
+			CString strTime;
+			SYSTEMTIME   tSysTime;
+			GetLocalTime(&tSysTime);
+			strTime.Format(L"%02ld:%02ld:%02ld.%03ld ",
+				tSysTime.wHour, tSysTime.wMinute, tSysTime.wSecond, tSysTime.wMilliseconds);
+
+			curMsg += strTime;
+			curMsg += tmpMsg;
+			_editRecv.SetWindowTextW(curMsg);
+			_editRecv.LineScroll(_editRecv.GetLineCount());
+
+			delete[] tmpMsg;
+		});
+
+	PostMessage(WMSG_FUNCTION, (WPARAM)pFunc);
+}
+
+LRESULT CProtoCompileToolDlg::OnFunction(WPARAM wParam, LPARAM lParam)
+{
+	TheadFunc* pFunc = (TheadFunc*)wParam;
+	pFunc->Func();
+	delete pFunc;
+
+	return TRUE;
+}
+

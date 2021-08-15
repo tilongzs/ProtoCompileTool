@@ -15,8 +15,9 @@
 #define IDC_EDIT_SAVE_PATH              1008
 #define IDC_BTN_SAVE_PATH               1009
 #define IDC_BTN_PROTO_PATH              1010
-#define IDC_BTN_PLUGIN_PATH2            1011
 #define IDC_BTN_CLEAR_PLUGIN_PATH       1011
+#define IDC_EDIT1                       1013
+#define IDC_EDIT_RECV                   1013
 
 // Next default values for new objects
 // 
@@ -24,7 +25,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        131
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1007
+#define _APS_NEXT_CONTROL_VALUE         1014
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

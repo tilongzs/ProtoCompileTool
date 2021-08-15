@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include "Common/ConfigFile.h"
 #include <memory>
+#include <functional>
 using namespace std;
 
 class CProtoCompileToolDlg : public CDialogEx
@@ -15,9 +16,21 @@ public:
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);
 
-
+	struct TheadFunc
+	{
+		function<void()> Func;
+	};
 protected:
 	HICON m_hIcon;
+	CEdit _editProtocPath;
+	CEdit _editPluginPath;
+	CComboBox _comboboxSaveType;
+	CEdit _editSavePath;
+	CComboBox _comboboxSelectType;
+	CEdit _editProtoPath;
+	CButton _btnSavePath;
+	CButton _btnProtoPath;
+	CEdit _editRecv;
 
 	virtual BOOL OnInitDialog();
 	afx_msg HCURSOR OnQueryDragIcon();
@@ -27,15 +40,10 @@ protected:
 
 	void LoadConfig();
 	bool IsProtoFileHasService(const CString& protoPath);
-public:
-	CEdit _editProtocPath;
-	CEdit _editPluginPath;
-	CComboBox _comboboxSaveType;
-	CEdit _editSavePath;
-	CComboBox _comboboxSelectType;
-	CEdit _editProtoPath;
-	CButton _btnSavePath;
-	CButton _btnProtoPath;
+	bool RunProtoc(const CString& protocPath, CString param);
+	void AppendMsg(const WCHAR* msg);
+	LRESULT OnFunction(WPARAM wParam, LPARAM lParam);
+
 	afx_msg void OnBtnProtocPath();
 	afx_msg void OnBtnPluginPath();
 	afx_msg void OnBtnSavePath();
