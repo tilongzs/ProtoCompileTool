@@ -409,9 +409,9 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 
 		// 遍历文件夹
 		_chdir(CStringA(protoPath));
-		long hFile;
 		_finddata_t fileinfo;
-		if ((hFile = _findfirst("*.proto", &fileinfo)) != -1)
+		intptr_t hFile = _findfirst("*.proto", &fileinfo);
+		if (hFile != -1)
 		{
 			do
 			{
