@@ -32,6 +32,7 @@ void CProtoCompileToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BTN_SAVE_PATH, _btnSavePath);
 	DDX_Control(pDX, IDC_BTN_PROTO_PATH, _btnProtoPath);
 	DDX_Control(pDX, IDC_EDIT_RECV, _editRecv);
+	DDX_Control(pDX, IDC_COMBO_PROTOC_LANG, _comboboxProtocLang);
 }
 
 BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
@@ -45,6 +46,7 @@ BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_PROTO_PATH, &CProtoCompileToolDlg::OnBtnProtoPath)
 	ON_BN_CLICKED(IDC_BTN_GENERATE, &CProtoCompileToolDlg::OnBtnGenerate)
 	ON_BN_CLICKED(IDC_BTN_CLEAR_PLUGIN_PATH, &CProtoCompileToolDlg::OnBtnClearPluginPath)
+	ON_CBN_SELCHANGE(IDC_COMBO_PROTOC_LANG, &CProtoCompileToolDlg::OnCbnSelchangeComboProtocLang)
 END_MESSAGE_MAP()
 
 
@@ -57,7 +59,6 @@ BOOL CProtoCompileToolDlg::OnInitDialog()
 
 	// 加载配置文件
 	LoadConfig();
-
 
 	return TRUE;
 }
@@ -101,6 +102,21 @@ void CProtoCompileToolDlg::LoadConfig()
 			_config->SetString(CFGKEY_COMMON, CFG_PluginPath, L"文件不存在");
 		}
 	}
+
+	// 读取编译语言配置
+	_comboboxProtocLang.AddString(L"C++");
+	_comboboxProtocLang.AddString(L"C#");
+	_comboboxProtocLang.AddString(L"Java");
+	_comboboxProtocLang.AddString(L"Kotlin");
+	_comboboxProtocLang.AddString(L"JavaScript");
+	_comboboxProtocLang.AddString(L"Objective C");
+	_comboboxProtocLang.AddString(L"PHP");
+	_comboboxProtocLang.AddString(L"Python");
+	_comboboxProtocLang.AddString(L"Ruby");
+	_comboboxProtocLang.AddString(L"Dart");
+	_comboboxProtocLang.AddString(L"Go");
+	int protocLangIndex = _config->GetInt(CFGKEY_COMMON, CFG_ProtocLang);
+	_comboboxProtocLang.SetCurSel(protocLangIndex);
 
 	// 读取保存路径配置
 	_btnSavePath.EnableWindow(FALSE);
@@ -243,6 +259,27 @@ bool CProtoCompileToolDlg::RunProtoc(const CString& protocPath, CString param)
 	CloseHandle(hWrite);
 
 	return ret;
+}
+
+CString CProtoCompileToolDlg::GetProtocLang()
+{
+	int protocLangIndex = _comboboxProtocLang.GetCurSel();
+	switch (protocLangIndex)
+	{
+	case 0: return L"cpp_out";
+	case 1: return L"csharp_out";
+	case 2: return L"java_out";
+	case 3: return L"kotlin_out"; // 此项无效，因为生成kotlin代码必须同时使用--java_out和--kotlin_out
+	case 4: return L"js_out";
+	case 5: return L"objc_out";
+	case 6: return L"php_out";
+	case 7: return L"python_out";
+	case 8: return L"ruby_out";
+	case 9: return L"dart_out";	// 需要dart.exe在PATH环境变量中
+	case 10: return L"go_out";	// 需要protoc-gen-go.exe插件
+	default:
+		return L"cpp_out";
+	}
 }
 
 void CProtoCompileToolDlg::OnBtnProtocPath()
@@ -454,11 +491,21 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, protoPath);
 
 	CString param;
+	int protocLangIndex = _comboboxProtocLang.GetCurSel();
+
 	for each (const auto& filePath in protoFiles)
 	{
 		// 生成Protobuf消息类文件
-		param.Format(L"-I \"%s\" --cpp_out=\"%s\"  \"%s\"", PathGetDir(filePath), savePath, filePath);
-		//ShellExecute(NULL, L"open", protocPath, param, NULL, SW_HIDE);
+		if (3 == protocLangIndex) // kotlin
+		{
+			// 生成kotlin代码必须同时使用--java_out和--kotlin_out
+			param.Format(L"-I \"%s\" --java_out=\"%s\" --kotlin_out=\"%s\" \"%s\"", PathGetDir(filePath), savePath, savePath, filePath);
+		}
+		else
+		{
+			param.Format(L"-I \"%s\" --%s=\"%s\" \"%s\"", PathGetDir(filePath), GetProtocLang(), savePath, filePath);
+		}
+		
 		if (!RunProtoc(protocPath, param))
 		{
 			return;
@@ -471,7 +518,6 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 			if (IsProtoFileHasService(filePath))
 			{
 				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
-				//ShellExecute(NULL, L"open", protocPath, param, NULL, SW_HIDE);
 				if (!RunProtoc(protocPath, param))
 				{
 					return;
@@ -534,3 +580,8 @@ LRESULT CProtoCompileToolDlg::OnFunction(WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
+void CProtoCompileToolDlg::OnCbnSelchangeComboProtocLang()
+{
+	int protocLangIndex = _comboboxProtocLang.GetCurSel();
+	_config->SetInt(CFGKEY_COMMON, CFG_ProtocLang, protocLangIndex);
+}

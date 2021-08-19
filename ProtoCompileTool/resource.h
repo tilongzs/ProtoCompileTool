@@ -16,6 +16,8 @@
 #define IDC_BTN_SAVE_PATH               1009
 #define IDC_BTN_PROTO_PATH              1010
 #define IDC_BTN_CLEAR_PLUGIN_PATH       1011
+#define IDC_COMBO_SAVE_TYPE2            1012
+#define IDC_COMBO_PROTOC_LANG           1012
 #define IDC_EDIT1                       1013
 #define IDC_EDIT_RECV                   1013
 
