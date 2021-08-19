@@ -217,12 +217,12 @@ bool CProtoCompileToolDlg::RunProtoc(const CString& protocPath, CString param)
 	{
 		WaitForSingleObject(ProceInfo.hProcess, INFINITE);
 
-		CHAR chBuf[BUFSIZ] = {0};
+		CHAR chBuf[1024] = {0};
 		DWORD dwRead = 0;
 		DWORD dwAvail = 0;
 		if (PeekNamedPipe(hRead, NULL, NULL, &dwRead, &dwAvail, NULL) && dwAvail > 0)//PeekNamePipe用来预览一个管道中的数据，用来判断管道中是否为空
 		{
-			BOOL bSuccess = ReadFile(hRead, chBuf, BUFSIZ, &dwRead, NULL); // 这里是读管道，即便已经没有数据，仍然会等待接收数据，所以才需要PeekNamePipe
+			BOOL bSuccess = ReadFile(hRead, chBuf, 1024, &dwRead, NULL); // 这里是读管道，即便已经没有数据，仍然会等待接收数据，所以才需要PeekNamePipe
 			if (bSuccess && dwRead != 0)
 			{
 				// 读取到错误消息
