@@ -20,6 +20,9 @@
 #define IDC_COMBO_PROTOC_LANG           1012
 #define IDC_EDIT1                       1013
 #define IDC_EDIT_RECV                   1013
+#define IDC_BTN_PLUGIN_PATH2            1014
+#define IDC_BTN_IMPORT_PATH             1014
+#define IDC_EDIT_IMPORT_PATH            1015
 
 // Next default values for new objects
 // 

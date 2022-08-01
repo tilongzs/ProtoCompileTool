@@ -33,6 +33,7 @@ void CProtoCompileToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BTN_PROTO_PATH, _btnProtoPath);
 	DDX_Control(pDX, IDC_EDIT_RECV, _editRecv);
 	DDX_Control(pDX, IDC_COMBO_PROTOC_LANG, _comboboxProtocLang);
+	DDX_Control(pDX, IDC_EDIT_IMPORT_PATH, _editImportPath);
 }
 
 BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
@@ -47,6 +48,7 @@ BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_GENERATE, &CProtoCompileToolDlg::OnBtnGenerate)
 	ON_BN_CLICKED(IDC_BTN_CLEAR_PLUGIN_PATH, &CProtoCompileToolDlg::OnBtnClearPluginPath)
 	ON_CBN_SELCHANGE(IDC_COMBO_PROTOC_LANG, &CProtoCompileToolDlg::OnCbnSelchangeComboProtocLang)
+	ON_BN_CLICKED(IDC_BTN_IMPORT_PATH, &CProtoCompileToolDlg::OnBtnImportPath)
 END_MESSAGE_MAP()
 
 
@@ -54,7 +56,7 @@ BOOL CProtoCompileToolDlg::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	SetIcon(m_hIcon, TRUE);		
+	SetIcon(m_hIcon, TRUE);
 	SetIcon(m_hIcon, FALSE);
 
 	// 加载配置文件
@@ -177,6 +179,21 @@ void CProtoCompileToolDlg::LoadConfig()
 		_comboboxSelectType.SetCurSel(0);
 		_config->SetInt(CFGKEY_COMMON, CFG_SelectType, 0);
 	}
+
+	// 读取引用的proto文件夹路径
+	CString importPath = _config->GetString(CFGKEY_COMMON, CFG_ProtoImportPath);
+	if (!importPath.IsEmpty())
+	{
+		if (PathIsDirectory(importPath))
+		{
+			_editImportPath.SetWindowText(importPath);
+		}
+		else
+		{
+			// 删除配置
+			_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, L"");
+		}
+	}
 }
 
 bool CProtoCompileToolDlg::IsProtoFileHasService(const CString& protoPath)
@@ -233,7 +250,7 @@ bool CProtoCompileToolDlg::RunProtoc(const CString& protocPath, CString param)
 	{
 		WaitForSingleObject(ProceInfo.hProcess, INFINITE);
 
-		CHAR chBuf[1024] = {0};
+		CHAR chBuf[1024] = { 0 };
 		DWORD dwRead = 0;
 		DWORD dwAvail = 0;
 		if (PeekNamedPipe(hRead, NULL, NULL, &dwRead, &dwAvail, NULL) && dwAvail > 0)//PeekNamePipe用来预览一个管道中的数据，用来判断管道中是否为空
@@ -289,7 +306,7 @@ void CProtoCompileToolDlg::OnBtnProtocPath()
 	CString filter = L"protoc.exe|protoc.exe||";	//文件过虑的类型
 	CFileDialog openFileDlg(TRUE, defaultDir, fileName, OFN_HIDEREADONLY | OFN_READONLY, filter, NULL);
 	INT_PTR result = openFileDlg.DoModal();
-	if (result == IDOK) 
+	if (result == IDOK)
 	{
 		CString protocPath = openFileDlg.GetPathName();
 		_editProtocPath.SetWindowText(protocPath);
@@ -412,6 +429,12 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	}
 
 	CString pluginPath = _config->GetString(CFGKEY_COMMON, CFG_PluginPath);
+	CString importPath = _config->GetString(CFGKEY_COMMON, CFG_ProtoImportPath);
+	CString importParam;
+	if (!importPath.IsEmpty())
+	{
+		importParam.Format(L" --proto_path=\"%s\"", importPath);
+	}
 
 	// 缓存所有proto文件路径
 	CString protoPath;
@@ -493,7 +516,7 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	CString param;
 	int protocLangIndex = _comboboxProtocLang.GetCurSel();
 
-	for each (const auto& filePath in protoFiles)
+	for each (const auto & filePath in protoFiles)
 	{
 		// 生成Protobuf消息类文件
 		if (3 == protocLangIndex) // kotlin
@@ -505,7 +528,12 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 		{
 			param.Format(L"-I \"%s\" --%s=\"%s\" \"%s\"", PathGetDir(filePath), GetProtocLang(), savePath, filePath);
 		}
-		
+
+		if (!importParam.IsEmpty())
+		{
+			param += importParam;
+		}
+
 		if (!RunProtoc(protocPath, param))
 		{
 			return;
@@ -518,11 +546,15 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 			if (IsProtoFileHasService(filePath))
 			{
 				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
+				if (!importParam.IsEmpty())
+				{
+					param += importParam;
+				}
 				if (!RunProtoc(protocPath, param))
 				{
 					return;
 				}
-			}		
+			}
 		}
 	}
 
@@ -584,4 +616,31 @@ void CProtoCompileToolDlg::OnCbnSelchangeComboProtocLang()
 {
 	int protocLangIndex = _comboboxProtocLang.GetCurSel();
 	_config->SetInt(CFGKEY_COMMON, CFG_ProtocLang, protocLangIndex);
+}
+
+void CProtoCompileToolDlg::OnBtnImportPath()
+{
+	TCHAR szFolderPath[MAX_PATH] = { 0 };
+	BROWSEINFO sInfo;
+	ZeroMemory(&sInfo, sizeof(BROWSEINFO));
+
+	sInfo.pidlRoot = CSIDL_DESKTOP;//文件夹的根目录，此处为桌面
+	sInfo.lpszTitle = L"请选择引用的其他proto文件所在文件夹";
+	sInfo.ulFlags = BIF_DONTGOBELOWDOMAIN | BIF_RETURNONLYFSDIRS | BIF_EDITBOX | BIF_NEWDIALOGSTYLE;
+
+	// 显示文件夹选择对话框
+	LPITEMIDLIST lpidlBrowse = SHBrowseForFolder(&sInfo);
+	if (lpidlBrowse != nullptr)
+	{
+		// 取得文件夹名
+		if (SHGetPathFromIDList(lpidlBrowse, szFolderPath))
+		{
+			_editImportPath.SetWindowText(szFolderPath);
+
+			// 保存配置
+			_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, szFolderPath);
+		}
+
+		CoTaskMemFree(lpidlBrowse);
+	}
 }

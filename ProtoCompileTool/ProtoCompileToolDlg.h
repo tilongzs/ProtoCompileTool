@@ -13,7 +13,7 @@ public:
 	enum { IDD = IDD_PROTOCOMPILETOOL_DIALOG };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);
 
 	struct TheadFunc
@@ -32,6 +32,7 @@ protected:
 	CButton _btnSavePath;
 	CButton _btnProtoPath;
 	CEdit _editRecv;
+	CEdit _editImportPath;
 
 	virtual BOOL OnInitDialog();
 	afx_msg HCURSOR OnQueryDragIcon();
@@ -55,4 +56,5 @@ protected:
 	afx_msg void OnBtnGenerate();
 	afx_msg void OnBtnClearPluginPath();
 	afx_msg void OnCbnSelchangeComboProtocLang();
+	afx_msg void OnBtnImportPath();
 };

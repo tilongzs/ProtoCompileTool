@@ -12,6 +12,7 @@
 #define CFG_SelectType	L"SelectType"
 #define CFG_ProtoFilesPath	L"ProtoFilesPath"
 #define CFG_ProtocLang	L"ProtocLang"
+#define CFG_ProtoImportPath	L"ProtoImportPath"
 
 class CConfigFile
 {
