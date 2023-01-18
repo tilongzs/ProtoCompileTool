@@ -24,7 +24,6 @@ protected:
 	HICON m_hIcon;
 	CEdit _editProtocPath;
 	CEdit _editPluginPath;
-	CComboBox _comboboxProtocLang;
 	CComboBox _comboboxSaveType;
 	CEdit _editSavePath;
 	CComboBox _comboboxSelectType;
@@ -43,7 +42,6 @@ protected:
 	void LoadConfig();
 	bool IsProtoFileHasService(const CString& protoPath);
 	bool RunProtoc(const CString& protocPath, CString param);
-	CString GetProtocLang();
 	void AppendMsg(const WCHAR* msg);
 	LRESULT OnFunction(WPARAM wParam, LPARAM lParam);
 
@@ -54,7 +52,5 @@ protected:
 	afx_msg void OnCbnSelchangeComboSelectType();
 	afx_msg void OnBtnProtoPath();
 	afx_msg void OnBtnGenerate();
-	afx_msg void OnBtnClearPluginPath();
-	afx_msg void OnCbnSelchangeComboProtocLang();
 	afx_msg void OnBtnImportPath();
 };
