@@ -32,7 +32,6 @@ void CProtoCompileToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BTN_SAVE_PATH, _btnSavePath);
 	DDX_Control(pDX, IDC_BTN_PROTO_PATH, _btnProtoPath);
 	DDX_Control(pDX, IDC_EDIT_RECV, _editRecv);
-	DDX_Control(pDX, IDC_COMBO_PROTOC_LANG, _comboboxProtocLang);
 	DDX_Control(pDX, IDC_EDIT_IMPORT_PATH, _editImportPath);
 	DDX_Control(pDX, IDC_CHECK_GRPC, _btnEnableGRPC);
 }
@@ -47,8 +46,6 @@ BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
 	ON_CBN_SELCHANGE(IDC_COMBO_SELECT_TYPE, &CProtoCompileToolDlg::OnCbnSelchangeComboSelectType)
 	ON_BN_CLICKED(IDC_BTN_PROTO_PATH, &CProtoCompileToolDlg::OnBtnProtoPath)
 	ON_BN_CLICKED(IDC_BTN_GENERATE, &CProtoCompileToolDlg::OnBtnGenerate)
-	ON_BN_CLICKED(IDC_BTN_CLEAR_PLUGIN_PATH, &CProtoCompileToolDlg::OnBtnClearPluginPath)
-	ON_CBN_SELCHANGE(IDC_COMBO_PROTOC_LANG, &CProtoCompileToolDlg::OnCbnSelchangeComboProtocLang)
 	ON_BN_CLICKED(IDC_BTN_IMPORT_PATH, &CProtoCompileToolDlg::OnBtnImportPath)
 END_MESSAGE_MAP()
 
@@ -87,7 +84,7 @@ void CProtoCompileToolDlg::LoadConfig()
 		else
 		{
 			// 删除配置
-			_config->SetString(CFGKEY_COMMON, CFG_ProtocPath, L"文件不存在");
+			_config->SetString(CFGKEY_COMMON, CFG_ProtocPath, L"");
 		}
 	}
 
@@ -102,24 +99,9 @@ void CProtoCompileToolDlg::LoadConfig()
 		else
 		{
 			// 删除配置
-			_config->SetString(CFGKEY_COMMON, CFG_PluginPath, L"文件不存在");
+			_config->SetString(CFGKEY_COMMON, CFG_PluginPath, L"");
 		}
 	}
-
-	// 读取编译语言配置
-	_comboboxProtocLang.AddString(L"C++");
-	_comboboxProtocLang.AddString(L"C#");
-	_comboboxProtocLang.AddString(L"Java");
-	_comboboxProtocLang.AddString(L"Kotlin");
-	_comboboxProtocLang.AddString(L"JavaScript");
-	_comboboxProtocLang.AddString(L"Objective C");
-	_comboboxProtocLang.AddString(L"PHP");
-	_comboboxProtocLang.AddString(L"Python");
-	_comboboxProtocLang.AddString(L"Ruby");
-	_comboboxProtocLang.AddString(L"Dart");
-	_comboboxProtocLang.AddString(L"Go");
-	int protocLangIndex = _config->GetInt(CFGKEY_COMMON, CFG_ProtocLang);
-	_comboboxProtocLang.SetCurSel(protocLangIndex);
 
 	// 读取保存路径配置
 	_btnSavePath.EnableWindow(FALSE);
@@ -143,7 +125,7 @@ void CProtoCompileToolDlg::LoadConfig()
 			else
 			{
 				// 删除配置
-				_config->SetString(CFGKEY_COMMON, CFG_SavePath, L"文件夹不存在");
+				_config->SetString(CFGKEY_COMMON, CFG_SavePath, L"");
 			}
 		}
 	}
@@ -171,7 +153,7 @@ void CProtoCompileToolDlg::LoadConfig()
 			else
 			{
 				// 删除配置
-				_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, L"文件夹不存在");
+				_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, L"");
 			}
 		}
 	}
@@ -181,7 +163,7 @@ void CProtoCompileToolDlg::LoadConfig()
 		_config->SetInt(CFGKEY_COMMON, CFG_SelectType, 0);
 	}
 
-	// 读取引用的proto文件夹路径
+	// 读取引用的proto文件夹路径（例如包含google、grpc等目录的上一级目录）
 	CString importPath = _config->GetString(CFGKEY_COMMON, CFG_ProtoImportPath);
 	if (!importPath.IsEmpty())
 	{
@@ -277,27 +259,6 @@ bool CProtoCompileToolDlg::RunProtoc(const CString& protocPath, CString param)
 	CloseHandle(hWrite);
 
 	return ret;
-}
-
-CString CProtoCompileToolDlg::GetProtocLang()
-{
-	int protocLangIndex = _comboboxProtocLang.GetCurSel();
-	switch (protocLangIndex)
-	{
-	case 0: return L"cpp_out";
-	case 1: return L"csharp_out";
-	case 2: return L"java_out";
-	case 3: return L"kotlin_out"; // 此项无效，因为生成kotlin代码必须同时使用--java_out和--kotlin_out
-	case 4: return L"js_out";
-	case 5: return L"objc_out";
-	case 6: return L"php_out";
-	case 7: return L"python_out";
-	case 8: return L"ruby_out";
-	case 9: return L"dart_out";	// 需要dart.exe在PATH环境变量中
-	case 10: return L"go_out";	// 需要protoc-gen-go.exe插件
-	default:
-		return L"cpp_out";
-	}
 }
 
 void CProtoCompileToolDlg::OnBtnProtocPath()
@@ -422,27 +383,40 @@ void CProtoCompileToolDlg::OnCbnSelchangeComboSelectType()
 
 void CProtoCompileToolDlg::OnBtnGenerate()
 {
-	CString protocPath = _config->GetString(CFGKEY_COMMON, CFG_ProtocPath);
+	// 检查配置项
+	// protoc位置
+	CString protocPath;
+	_editProtocPath.GetWindowText(protocPath);
 	if (protocPath.IsEmpty())
 	{
 		MessageBox(L"请选择protoc.exe位置");
 		return;
 	}
-
-	CString pluginPath = _config->GetString(CFGKEY_COMMON, CFG_PluginPath);
-	CString importPath = _config->GetString(CFGKEY_COMMON, CFG_ProtoImportPath);
+	_config->SetString(CFGKEY_COMMON, CFG_ProtocPath, protocPath);
+	// gRPC plugin位置（可选）
+	CString pluginPath;
+	_editPluginPath.GetWindowText(pluginPath);
+	if (!protocPath.IsEmpty())
+	{
+		_config->SetString(CFGKEY_COMMON, CFG_PluginPath, pluginPath);
+	}
+	// 包含grpc头文件的文件夹路径
+	CString importPath;
+	_editImportPath.GetWindowText(importPath);
 	CString importParam;
 	if (!importPath.IsEmpty())
 	{
+		_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, importPath);
 		importParam.Format(L" --proto_path=\"%s\"", importPath);
 	}
 
 	// 缓存所有proto文件路径
 	CString protoPath;
-	_editProtoPath.GetWindowText(protoPath);
 	vector<CString> protoFiles;
 	if (_comboboxSelectType.GetCurSel() == 0) // 单个proto文件
 	{
+		_editProtoPath.GetWindowText(protoPath);
+
 		// 检查文件是否存在
 		if (protoPath.IsEmpty())
 		{
@@ -515,26 +489,10 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, protoPath);
 
 	CString param;
-	CString protocLang;
-	_comboboxProtocLang.GetWindowText(protocLang);
-
 	for each (const auto & filePath in protoFiles)
 	{
 		// 生成Protobuf消息类文件
-		if ("Kotlin" == protocLang)
-		{
-			// 生成kotlin代码必须同时使用--java_out和--kotlin_out
-			param.Format(L"-I \"%s\" --java_out=\"%s\" --kotlin_out=\"%s\" \"%s\"", PathGetDir(filePath), savePath, savePath, filePath);
-		}
-		else if ("Dart" == protocLang)
-		{
-			param.Format(L"-I \"%s\" --dart_out=\"%s\" \"%s\"", PathGetDir(filePath), savePath, filePath);
-		}
-		else
-		{
-			param.Format(L"-I \"%s\" --%s=\"%s\" \"%s\"", PathGetDir(filePath), GetProtocLang(), savePath, filePath);
-		}
-
+		param.Format(L"-I \"%s\" --cpp_out=\"%s\" \"%s\"", PathGetDir(filePath), savePath, filePath);
 		if (!importParam.IsEmpty())
 		{
 			param += importParam;
@@ -546,13 +504,12 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 		}
 
 		// 生成gRPC类文件
-		if (_btnEnableGRPC.GetCheck())
+		if (!pluginPath.IsEmpty())
 		{
 			// 检查该proto文件里是否包含service
 			if (IsProtoFileHasService(filePath))
 			{
-				if ("Dart" == protocLang)
-				{
+				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
 					param.Format(L"-I \"%s\" --dart_out=grpc:\"%s\"  \"%s\"", PathGetDir(filePath), savePath, filePath);
 				}
 				else
@@ -574,12 +531,6 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 
 	AppendMsg(L"转换完成");
 	MessageBox(L"转换完成");
-}
-
-void CProtoCompileToolDlg::OnBtnClearPluginPath()
-{
-	_editPluginPath.SetWindowText(L"");
-	_config->SetString(CFGKEY_COMMON, CFG_PluginPath, L"");
 }
 
 void CProtoCompileToolDlg::AppendMsg(const WCHAR* msg)
@@ -624,12 +575,6 @@ LRESULT CProtoCompileToolDlg::OnFunction(WPARAM wParam, LPARAM lParam)
 	delete pFunc;
 
 	return TRUE;
-}
-
-void CProtoCompileToolDlg::OnCbnSelchangeComboProtocLang()
-{
-	int protocLangIndex = _comboboxProtocLang.GetCurSel();
-	_config->SetInt(CFGKEY_COMMON, CFG_ProtocLang, protocLangIndex);
 }
 
 void CProtoCompileToolDlg::OnBtnImportPath()
