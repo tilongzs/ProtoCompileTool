@@ -34,6 +34,7 @@ void CProtoCompileToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_RECV, _editRecv);
 	DDX_Control(pDX, IDC_COMBO_PROTOC_LANG, _comboboxProtocLang);
 	DDX_Control(pDX, IDC_EDIT_IMPORT_PATH, _editImportPath);
+	DDX_Control(pDX, IDC_CHECK_GRPC, _btnEnableGRPC);
 }
 
 BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
@@ -248,7 +249,7 @@ bool CProtoCompileToolDlg::RunProtoc(const CString& protocPath, CString param)
 	param.Format(L"%s %s", protocPath, param);
 	if (CreateProcess(nullptr, param.GetBuffer(), NULL, NULL, TRUE, CREATE_NEW_CONSOLE, NULL, NULL, &StartInfo, &ProceInfo))
 	{
-		WaitForSingleObject(ProceInfo.hProcess, INFINITE);
+		WaitForSingleObject(ProceInfo.hProcess, /*INFINITE*/3000); // 等待3秒
 
 		CHAR chBuf[1024] = { 0 };
 		DWORD dwRead = 0;
@@ -514,15 +515,20 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, protoPath);
 
 	CString param;
-	int protocLangIndex = _comboboxProtocLang.GetCurSel();
+	CString protocLang;
+	_comboboxProtocLang.GetWindowText(protocLang);
 
 	for each (const auto & filePath in protoFiles)
 	{
 		// 生成Protobuf消息类文件
-		if (3 == protocLangIndex) // kotlin
+		if ("Kotlin" == protocLang)
 		{
 			// 生成kotlin代码必须同时使用--java_out和--kotlin_out
 			param.Format(L"-I \"%s\" --java_out=\"%s\" --kotlin_out=\"%s\" \"%s\"", PathGetDir(filePath), savePath, savePath, filePath);
+		}
+		else if ("Dart" == protocLang)
+		{
+			param.Format(L"-I \"%s\" --dart_out=\"%s\" \"%s\"", PathGetDir(filePath), savePath, filePath);
 		}
 		else
 		{
@@ -540,12 +546,20 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 		}
 
 		// 生成gRPC类文件
-		if (!pluginPath.IsEmpty())
+		if (_btnEnableGRPC.GetCheck())
 		{
 			// 检查该proto文件里是否包含service
 			if (IsProtoFileHasService(filePath))
 			{
-				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
+				if ("Dart" == protocLang)
+				{
+					param.Format(L"-I \"%s\" --dart_out=grpc:\"%s\"  \"%s\"", PathGetDir(filePath), savePath, filePath);
+				}
+				else
+				{
+					param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
+				}
+
 				if (!importParam.IsEmpty())
 				{
 					param += importParam;
