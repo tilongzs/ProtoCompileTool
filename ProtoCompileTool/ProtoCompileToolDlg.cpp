@@ -33,7 +33,6 @@ void CProtoCompileToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BTN_PROTO_PATH, _btnProtoPath);
 	DDX_Control(pDX, IDC_EDIT_RECV, _editRecv);
 	DDX_Control(pDX, IDC_EDIT_IMPORT_PATH, _editImportPath);
-	DDX_Control(pDX, IDC_CHECK_GRPC, _btnEnableGRPC);
 }
 
 BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
@@ -73,7 +72,7 @@ void CProtoCompileToolDlg::LoadConfig()
 	_config = make_shared<CConfigFile>();
 	_config->Initialize(L"config.ini");
 
-	// 读取protoc路径
+	// 读取protoc.exe路径
 	CString protocPath = _config->GetString(CFGKEY_COMMON, CFG_ProtocPath);
 	if (!protocPath.IsEmpty())
 	{
@@ -85,7 +84,15 @@ void CProtoCompileToolDlg::LoadConfig()
 		{
 			// 删除配置
 			_config->SetString(CFGKEY_COMMON, CFG_ProtocPath, L"");
+
+			// 提示路径
+			AppendMsg(L"protoc.exe路径 例如：vcpkg\\installed\\x64-windows\\tools\\protobuf\\protoc.exe");
 		}
+	}
+	else
+	{
+		// 提示路径
+		AppendMsg(L"protoc.exe路径 例如：vcpkg\\installed\\x64-windows\\tools\\protobuf\\protoc.exe");
 	}
 
 	// 读取gRPC plugin路径
@@ -100,7 +107,15 @@ void CProtoCompileToolDlg::LoadConfig()
 		{
 			// 删除配置
 			_config->SetString(CFGKEY_COMMON, CFG_PluginPath, L"");
+
+			// 提示路径
+			AppendMsg(L"grpc_cpp_plugin.exe路径 例如：vcpkg\\installed\\x64-windows\\tools\\grpc\\grpc_cpp_plugin.exe");
 		}
+	}
+	else
+	{
+		// 提示路径
+		AppendMsg(L"grpc_cpp_plugin.exe路径 例如：vcpkg\\installed\\x64-windows\\tools\\grpc\\grpc_cpp_plugin.exe");
 	}
 
 	// 读取保存路径配置
@@ -175,7 +190,15 @@ void CProtoCompileToolDlg::LoadConfig()
 		{
 			// 删除配置
 			_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, L"");
+
+			// 提示路径
+			AppendMsg(L"额外的proto的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
 		}
+	}
+	else
+	{
+		// 提示路径
+		AppendMsg(L"额外的proto的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
 	}
 }
 
@@ -491,7 +514,7 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	CString param;
 	for each (const auto & filePath in protoFiles)
 	{
-		// 生成Protobuf消息类文件
+		// 生成Protobuf类文件
 		param.Format(L"-I \"%s\" --cpp_out=\"%s\" \"%s\"", PathGetDir(filePath), savePath, filePath);
 		if (!importParam.IsEmpty())
 		{
@@ -510,21 +533,16 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 			if (IsProtoFileHasService(filePath))
 			{
 				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
-					param.Format(L"-I \"%s\" --dart_out=grpc:\"%s\"  \"%s\"", PathGetDir(filePath), savePath, filePath);
-				}
-				else
-				{
-					param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
-				}
+			}
 
-				if (!importParam.IsEmpty())
-				{
-					param += importParam;
-				}
-				if (!RunProtoc(protocPath, param))
-				{
-					return;
-				}
+			if (!importParam.IsEmpty())
+			{
+				param += importParam;
+			}
+
+			if (!RunProtoc(protocPath, param))
+			{
+				return;
 			}
 		}
 	}
@@ -554,7 +572,7 @@ void CProtoCompileToolDlg::AppendMsg(const WCHAR* msg)
 			CString strTime;
 			SYSTEMTIME   tSysTime;
 			GetLocalTime(&tSysTime);
-			strTime.Format(L"%02ld:%02ld:%02ld.%03ld ",
+			strTime.Format(L"[%02ld:%02ld:%02ld.%03ld] ",
 				tSysTime.wHour, tSysTime.wMinute, tSysTime.wSecond, tSysTime.wMilliseconds);
 
 			curMsg += strTime;
