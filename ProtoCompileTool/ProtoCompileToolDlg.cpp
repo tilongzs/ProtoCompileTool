@@ -47,6 +47,11 @@ BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BTN_PROTO_PATH, &CProtoCompileToolDlg::OnBtnProtoPath)
 	ON_BN_CLICKED(IDC_BTN_GENERATE, &CProtoCompileToolDlg::OnBtnGenerate)
 	ON_BN_CLICKED(IDC_BTN_IMPORT_PATH, &CProtoCompileToolDlg::OnBtnImportPath)
+	ON_EN_CHANGE(IDC_EDIT_PROTOC_PATH, &CProtoCompileToolDlg::OnEnChangeEditProtocPath)
+	ON_EN_CHANGE(IDC_EDIT_PLUGIN_PATH, &CProtoCompileToolDlg::OnEnChangeEditPluginPath)
+	ON_EN_CHANGE(IDC_EDIT_IMPORT_PATH, &CProtoCompileToolDlg::OnEnChangeEditImportPath)
+	ON_EN_CHANGE(IDC_EDIT_SAVE_PATH, &CProtoCompileToolDlg::OnEnChangeEditSavePath)
+	ON_EN_CHANGE(IDC_EDIT_PROTO_PATH, &CProtoCompileToolDlg::OnEnChangeEditProtoPath)
 END_MESSAGE_MAP()
 
 
@@ -110,13 +115,13 @@ void CProtoCompileToolDlg::LoadConfig()
 			_config->SetString(CFGKEY_COMMON, CFG_PluginPath, L"");
 
 			// 提示路径
-			AppendMsg(L"grpc_cpp_plugin.exe路径 例如：vcpkg\\installed\\x64-windows\\tools\\grpc\\grpc_cpp_plugin.exe");
+			AppendMsg(L"插件路径 例如：vcpkg\\installed\\x64-windows\\tools\\grpc\\grpc_cpp_plugin.exe");
 		}
 	}
 	else
 	{
 		// 提示路径
-		AppendMsg(L"grpc_cpp_plugin.exe路径 例如：vcpkg\\installed\\x64-windows\\tools\\grpc\\grpc_cpp_plugin.exe");
+		AppendMsg(L"插件路径 例如：vcpkg\\installed\\x64-windows\\tools\\grpc\\grpc_cpp_plugin.exe");
 	}
 
 	// 读取保存路径配置
@@ -193,13 +198,13 @@ void CProtoCompileToolDlg::LoadConfig()
 			_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, L"");
 
 			// 提示路径
-			AppendMsg(L"额外的proto的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
+			AppendMsg(L"通用proto（如empty.proto）的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
 		}
 	}
 	else
 	{
 		// 提示路径
-		AppendMsg(L"额外的proto的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
+		AppendMsg(L"通用的proto（如empty.proto）的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
 	}
 }
 
@@ -302,6 +307,14 @@ void CProtoCompileToolDlg::OnBtnProtocPath()
 	}
 }
 
+void CProtoCompileToolDlg::OnEnChangeEditProtocPath()
+{
+	CString newPath;
+	_editProtocPath.GetWindowText(newPath);
+	// 保存配置
+	_config->SetString(CFGKEY_COMMON, CFG_ProtocPath, newPath);
+}
+
 void CProtoCompileToolDlg::OnBtnPluginPath()
 {
 	CString defaultDir = GetModuleDir();	//默认打开的文件路径
@@ -317,6 +330,14 @@ void CProtoCompileToolDlg::OnBtnPluginPath()
 		// 保存配置
 		_config->SetString(CFGKEY_COMMON, CFG_PluginPath, pluginPath);
 	}
+}
+
+void CProtoCompileToolDlg::OnEnChangeEditPluginPath()
+{
+	CString newPath;
+	_editPluginPath.GetWindowText(newPath);
+	// 保存配置
+	_config->SetString(CFGKEY_COMMON, CFG_PluginPath, newPath);
 }
 
 void CProtoCompileToolDlg::OnBtnSavePath()
@@ -344,6 +365,14 @@ void CProtoCompileToolDlg::OnBtnSavePath()
 
 		CoTaskMemFree(lpidlBrowse);
 	}
+}
+
+void CProtoCompileToolDlg::OnEnChangeEditSavePath()
+{
+	CString newPath;
+	_editSavePath.GetWindowText(newPath);
+	// 保存配置
+	_config->SetString(CFGKEY_COMMON, CFG_SavePath, newPath);
 }
 
 void CProtoCompileToolDlg::OnBtnProtoPath()
@@ -387,6 +416,14 @@ void CProtoCompileToolDlg::OnBtnProtoPath()
 			CoTaskMemFree(lpidlBrowse);
 		}
 	}
+}
+
+void CProtoCompileToolDlg::OnEnChangeEditProtoPath()
+{
+	CString newPath;
+	_editProtoPath.GetWindowText(newPath);
+	// 保存配置
+	_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, newPath);
 }
 
 void CProtoCompileToolDlg::OnCbnSelchangeComboSaveType()
@@ -625,4 +662,12 @@ void CProtoCompileToolDlg::OnBtnImportPath()
 
 		CoTaskMemFree(lpidlBrowse);
 	}
+}
+
+void CProtoCompileToolDlg::OnEnChangeEditImportPath()
+{
+	CString newPath;
+	_editImportPath.GetWindowText(newPath);
+	// 保存配置
+	_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, newPath);
 }

@@ -54,4 +54,9 @@ protected:
 	afx_msg void OnBtnProtoPath();
 	afx_msg void OnBtnGenerate();
 	afx_msg void OnBtnImportPath();
+	afx_msg void OnEnChangeEditProtocPath();
+	afx_msg void OnEnChangeEditPluginPath();
+	afx_msg void OnEnChangeEditImportPath();
+	afx_msg void OnEnChangeEditSavePath();
+	afx_msg void OnEnChangeEditProtoPath();
 };
