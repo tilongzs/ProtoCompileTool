@@ -32,6 +32,7 @@ protected:
 	CButton _btnProtoPath;
 	CEdit _editRecv;
 	CEdit _editImportPath;
+	CButton _btnGenerate;
 
 	virtual BOOL OnInitDialog();
 	afx_msg HCURSOR OnQueryDragIcon();

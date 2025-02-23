@@ -33,6 +33,7 @@ void CProtoCompileToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_BTN_PROTO_PATH, _btnProtoPath);
 	DDX_Control(pDX, IDC_EDIT_RECV, _editRecv);
 	DDX_Control(pDX, IDC_EDIT_IMPORT_PATH, _editImportPath);
+	DDX_Control(pDX, IDC_BTN_GENERATE, _btnGenerate);
 }
 
 BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
@@ -435,11 +436,10 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 
 	// 缓存所有proto文件路径
 	CString protoPath;
+	_editProtoPath.GetWindowText(protoPath);
 	vector<CString> protoFiles;
 	if (_comboboxSelectType.GetCurSel() == 0) // 单个proto文件
 	{
-		_editProtoPath.GetWindowText(protoPath);
-
 		// 检查文件是否存在
 		if (protoPath.IsEmpty())
 		{
@@ -511,6 +511,9 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	_config->SetString(CFGKEY_COMMON, CFG_SavePath, savePath);
 	_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, protoPath);
 
+	// 开始转换
+	_btnGenerate.SetWindowText(L"正在转换...");
+
 	CString param;
 	for each (const auto & filePath in protoFiles)
 	{
@@ -523,6 +526,7 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 
 		if (!RunProtoc(protocPath, param))
 		{
+			_btnGenerate.SetWindowText(L"开始转换");
 			return;
 		}
 
@@ -547,6 +551,7 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 		}
 	}
 
+	_btnGenerate.SetWindowText(L"开始转换");
 	AppendMsg(L"转换完成");
 	MessageBox(L"转换完成");
 }
