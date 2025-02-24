@@ -5,8 +5,8 @@
 */
 
 #define CFGKEY_COMMON	L"Common"
-#define CFGKEY_CPP	L"CPlusPlus"
-#define CFGKEY_Dart	L"Dart"
+#define CFGKEY_CPP	L"CPP"
+#define CFGKEY_Java	L"Java"
 #define CFG_ProtocPath	L"ProtocPath"
 #define CFG_PluginPath	L"PluginPath"
 #define CFG_SaveType	L"SaveType"

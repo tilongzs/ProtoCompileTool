@@ -34,6 +34,7 @@ void CProtoCompileToolDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_RECV, _editRecv);
 	DDX_Control(pDX, IDC_EDIT_IMPORT_PATH, _editImportPath);
 	DDX_Control(pDX, IDC_BTN_GENERATE, _btnGenerate);
+	DDX_Control(pDX, IDC_COMBO_PROTOC_LANG, _comboboxProtocLang);
 }
 
 BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
@@ -52,8 +53,8 @@ BEGIN_MESSAGE_MAP(CProtoCompileToolDlg, CDialogEx)
 	ON_EN_CHANGE(IDC_EDIT_IMPORT_PATH, &CProtoCompileToolDlg::OnEnChangeEditImportPath)
 	ON_EN_CHANGE(IDC_EDIT_SAVE_PATH, &CProtoCompileToolDlg::OnEnChangeEditSavePath)
 	ON_EN_CHANGE(IDC_EDIT_PROTO_PATH, &CProtoCompileToolDlg::OnEnChangeEditProtoPath)
+	ON_CBN_SELCHANGE(IDC_COMBO_PROTOC_LANG, &CProtoCompileToolDlg::OnCbnSelchangeComboProtocLang)
 END_MESSAGE_MAP()
-
 
 BOOL CProtoCompileToolDlg::OnInitDialog()
 {
@@ -78,6 +79,13 @@ void CProtoCompileToolDlg::LoadConfig()
 	_config = make_shared<CConfigFile>();
 	_config->Initialize(L"config.ini");
 
+	// 读取编译语言配置
+	_comboboxProtocLang.AddString(L"C++");
+	_comboboxProtocLang.AddString(L"Java");
+	int protocLangIndex = _config->GetInt(CFGKEY_COMMON, CFG_ProtocLang);
+	_comboboxProtocLang.SetCurSel(protocLangIndex);
+	_protocLang = (ProtocLang)protocLangIndex;
+
 	// 读取protoc.exe路径
 	CString protocPath = _config->GetString(CFGKEY_COMMON, CFG_ProtocPath);
 	if (!protocPath.IsEmpty())
@@ -101,90 +109,34 @@ void CProtoCompileToolDlg::LoadConfig()
 		AppendMsg(L"protoc.exe路径 例如：vcpkg\\installed\\x64-windows\\tools\\protobuf\\protoc.exe");
 	}
 
-	// 读取gRPC plugin路径
-	CString pluginPath = _config->GetString(CFGKEY_COMMON, CFG_PluginPath);
-	if (!pluginPath.IsEmpty())
-	{
-		if (PathFileExists(pluginPath))
-		{
-			_editPluginPath.SetWindowText(pluginPath);
-		}
-		else
-		{
-			// 删除配置
-			_config->SetString(CFGKEY_COMMON, CFG_PluginPath, L"");
-
-			// 提示路径
-			AppendMsg(L"插件路径 例如：vcpkg\\installed\\x64-windows\\tools\\grpc\\grpc_cpp_plugin.exe");
-		}
-	}
-	else
-	{
-		// 提示路径
-		AppendMsg(L"插件路径 例如：vcpkg\\installed\\x64-windows\\tools\\grpc\\grpc_cpp_plugin.exe");
-	}
-
-	// 读取保存路径配置
-	_btnSavePath.EnableWindow(FALSE);
-	_editSavePath.EnableWindow(FALSE);
-	_comboboxSaveType.AddString(L"proto同级文件夹");
-	_comboboxSaveType.AddString(L"指定文件夹");
-	int saveType = _config->GetInt(CFGKEY_COMMON, CFG_SaveType);
-	if (saveType < 2)
-	{
-		_comboboxSaveType.SetCurSel(saveType);
-
-		if (saveType == 1)
-		{
-			_btnSavePath.EnableWindow(TRUE);
-			_editSavePath.EnableWindow(TRUE);
-			CString savePath = _config->GetString(CFGKEY_COMMON, CFG_SavePath);
-			if (PathIsDirectory(savePath))
-			{
-				_editSavePath.SetWindowText(savePath);
-			}
-			else
-			{
-				// 删除配置
-				_config->SetString(CFGKEY_COMMON, CFG_SavePath, L"");
-			}
-		}
-	}
-	else
-	{
-		_comboboxSaveType.SetCurSel(0);
-		_config->SetInt(CFGKEY_COMMON, CFG_SaveType, 0);
-	}
-
 	// 读取使用proto方式配置
 	_comboboxSelectType.AddString(L"单个proto文件");
 	_comboboxSelectType.AddString(L"包含proto文件的文件夹");
 	int selectType = _config->GetInt(CFGKEY_COMMON, CFG_SelectType);
-	if (selectType < 2)
+	if (selectType == 1)
 	{
-		_comboboxSelectType.SetCurSel(selectType);
-
-		if (selectType == 1)
+		CString protoPath = _config->GetString(CFGKEY_COMMON, CFG_ProtoFilesPath);
+		if (PathIsDirectory(protoPath))
 		{
-			CString protoPath = _config->GetString(CFGKEY_COMMON, CFG_ProtoFilesPath);
-			if (PathIsDirectory(protoPath))
-			{
-				_editProtoPath.SetWindowText(protoPath);
-			}
-			else
-			{
-				// 删除配置
-				_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, L"");
-			}
+			_editProtoPath.SetWindowText(protoPath);
+		}
+		else
+		{
+			// 删除配置
+			_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, L"");
 		}
 	}
-	else
-	{
-		_comboboxSelectType.SetCurSel(0);
-		_config->SetInt(CFGKEY_COMMON, CFG_SelectType, 0);
-	}
+	_comboboxSelectType.SetCurSel(selectType);
 
-	// 读取引用的proto文件夹路径（例如包含google、grpc等目录的上一级目录）
+	// 读取生成代码文件的存放路径配置
+	_btnSavePath.EnableWindow(FALSE);
+	_editSavePath.EnableWindow(FALSE);
+	_comboboxSaveType.AddString(L"proto同级文件夹");
+	_comboboxSaveType.AddString(L"指定文件夹");
+	int saveType = _config->GetInt(CFGKEY_COMMON, CFG_SaveType);	
+	_comboboxSaveType.SetCurSel(saveType);
+
+	// 读取通用proto文件夹路径
 	CString importPath = _config->GetString(CFGKEY_COMMON, CFG_ProtoImportPath);
 	if (!importPath.IsEmpty())
 	{
@@ -206,6 +158,8 @@ void CProtoCompileToolDlg::LoadConfig()
 		// 提示路径
 		AppendMsg(L"通用的proto（如empty.proto）的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
 	}
+
+	OnCbnSelchangeComboProtocLang();
 }
 
 bool CProtoCompileToolDlg::IsProtoFileHasService(const CString& protoPath)
@@ -326,9 +280,6 @@ void CProtoCompileToolDlg::OnBtnPluginPath()
 	{
 		CString pluginPath = openFileDlg.GetPathName();
 		_editPluginPath.SetWindowText(pluginPath);
-
-		// 保存配置
-		_config->SetString(CFGKEY_COMMON, CFG_PluginPath, pluginPath);
 	}
 }
 
@@ -337,7 +288,19 @@ void CProtoCompileToolDlg::OnEnChangeEditPluginPath()
 	CString newPath;
 	_editPluginPath.GetWindowText(newPath);
 	// 保存配置
-	_config->SetString(CFGKEY_COMMON, CFG_PluginPath, newPath);
+	switch (_protocLang)
+	{
+	case ProtocLang::CPP:
+	{
+		_config->SetString(CFGKEY_CPP, CFG_PluginPath, newPath);
+	}
+	break;
+	case ProtocLang::Java:
+	{
+		_config->SetString(CFGKEY_Java, CFG_PluginPath, newPath);
+	}
+	break;
+	}
 }
 
 void CProtoCompileToolDlg::OnBtnSavePath()
@@ -372,7 +335,15 @@ void CProtoCompileToolDlg::OnEnChangeEditSavePath()
 	CString newPath;
 	_editSavePath.GetWindowText(newPath);
 	// 保存配置
-	_config->SetString(CFGKEY_COMMON, CFG_SavePath, newPath);
+	switch (_protocLang)
+	{
+	case CPP:
+		_config->SetString(CFGKEY_CPP, CFG_SavePath, newPath);
+		break;
+	case Java:
+		_config->SetString(CFGKEY_Java, CFG_SavePath, newPath);
+		break;
+	}	
 }
 
 void CProtoCompileToolDlg::OnBtnProtoPath()
@@ -431,8 +402,52 @@ void CProtoCompileToolDlg::OnCbnSelchangeComboSaveType()
 	int saveType = _comboboxSaveType.GetCurSel();
 	_btnSavePath.EnableWindow(saveType == 1);
 	_editSavePath.EnableWindow(saveType == 1);
-	_editSavePath.SetWindowText(L"");
 	_config->SetInt(CFGKEY_COMMON, CFG_SaveType, saveType);
+
+	if (saveType == 1)
+	{
+		CString savePath;
+		switch (_protocLang)
+		{
+		case CPP:
+			savePath = _config->GetString(CFGKEY_CPP, CFG_SavePath);
+			break;
+		case Java:
+			savePath = _config->GetString(CFGKEY_Java, CFG_SavePath);
+			break;
+		}
+		if (savePath.IsEmpty())
+		{
+			_editSavePath.SetWindowText(savePath);
+		}
+		else
+		{
+			if (PathIsDirectory(savePath))
+			{
+				_editSavePath.SetWindowText(savePath);
+			}
+			else
+			{
+				savePath = L"";
+				// 删除配置
+				switch (_protocLang)
+				{
+				case CPP:
+					_config->SetString(CFGKEY_CPP, CFG_SavePath, savePath);
+					break;
+				case Java:
+					_config->GetString(CFGKEY_Java, CFG_SavePath, savePath);
+					break;
+				}
+			}
+
+			_editSavePath.SetWindowText(savePath);
+		}		
+	}
+	else
+	{
+		_editSavePath.Clear();
+	}
 }
 
 void CProtoCompileToolDlg::OnCbnSelchangeComboSelectType()
@@ -454,21 +469,19 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 		return;
 	}
 	_config->SetString(CFGKEY_COMMON, CFG_ProtocPath, protocPath);
-	// gRPC plugin位置（可选）
+
+	// gRPC插件路径（可选）
 	CString pluginPath;
 	_editPluginPath.GetWindowText(pluginPath);
-	if (!protocPath.IsEmpty())
-	{
-		_config->SetString(CFGKEY_COMMON, CFG_PluginPath, pluginPath);
-	}
-	// 包含grpc头文件的文件夹路径
+
+	// 通用proto文件所在文件夹（可选）
 	CString importPath;
 	_editImportPath.GetWindowText(importPath);
-	CString importParam;
+	CString commonProtoPath;
 	if (!importPath.IsEmpty())
 	{
 		_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, importPath);
-		importParam.Format(L" --proto_path=\"%s\"", importPath);
+		commonProtoPath.Format(L" --proto_path=\"%s\"", importPath);
 	}
 
 	// 缓存所有proto文件路径
@@ -520,23 +533,23 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 		}
 	}
 
-	// 确定保存文件夹位置
-	CString savePath;
+	// 生成代码文件的存放路径
+	CString outputDir;
 	if (_comboboxSaveType.GetCurSel() == 0) // proto同级文件夹
 	{
 		if (_comboboxSelectType.GetCurSel() == 0) // 单个proto文件
 		{
-			savePath = PathGetDir(protoPath);
+			outputDir = PathGetDir(protoPath);
 		}
 		else // 包含proto文件的文件夹
 		{
-			savePath = protoPath;
+			outputDir = protoPath;
 		}
 	}
 	else // 指定文件夹
 	{
-		_editSavePath.GetWindowText(savePath);
-		if (!PathIsDirectory(savePath))
+		_editSavePath.GetWindowText(outputDir);
+		if (!PathIsDirectory(outputDir))
 		{
 			MessageBox(L"存放位置不存在");
 			_editSavePath.SetWindowText(L"");
@@ -545,20 +558,21 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 	}
 
 	// 保存配置
-	_config->SetString(CFGKEY_COMMON, CFG_SavePath, savePath);
+	_config->SetString(CFGKEY_COMMON, CFG_SavePath, outputDir);
 	_config->SetString(CFGKEY_COMMON, CFG_ProtoFilesPath, protoPath);
 
 	// 开始转换
 	_btnGenerate.SetWindowText(L"正在转换...");
 
-	CString param;
+	CString param, protocCmd, pluginCmd;
 	for each (const auto & filePath in protoFiles)
 	{
 		// 生成Protobuf类文件
-		param.Format(L"-I \"%s\" --cpp_out=\"%s\" \"%s\"", PathGetDir(filePath), savePath, filePath);
-		if (!importParam.IsEmpty())
+		protocCmd = GetProtocCmd();
+		param.Format(L"-I \"%s\" --%s=\"%s\" \"%s\"", PathGetDir(filePath), protocCmd, outputDir, filePath);
+		if (!commonProtoPath.IsEmpty())
 		{
-			param += importParam;
+			param += commonProtoPath;
 		}
 
 		if (!RunProtoc(protocPath, param))
@@ -573,16 +587,17 @@ void CProtoCompileToolDlg::OnBtnGenerate()
 			// 检查该proto文件里是否包含service
 			if (IsProtoFileHasService(filePath))
 			{
-				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), savePath, pluginPath, filePath);
+				param.Format(L"-I \"%s\" --grpc_out=\"%s\" --plugin=protoc-gen-grpc=\"%s\" \"%s\"", PathGetDir(filePath), outputDir, pluginPath, filePath);
 			}
 
-			if (!importParam.IsEmpty())
+			if (!commonProtoPath.IsEmpty())
 			{
-				param += importParam;
+				param += commonProtoPath;
 			}
 
 			if (!RunProtoc(protocPath, param))
 			{
+				_btnGenerate.SetWindowText(L"开始转换");
 				return;
 			}
 		}
@@ -637,6 +652,17 @@ LRESULT CProtoCompileToolDlg::OnFunction(WPARAM wParam, LPARAM lParam)
 	return TRUE;
 }
 
+CString CProtoCompileToolDlg::GetProtocCmd()
+{
+	switch (_protocLang)
+	{
+	case ProtocLang::CPP: return L"cpp_out";
+	case ProtocLang::Java: return L"java_out";
+	default:
+		return L"cpp_out";
+	}
+}
+
 void CProtoCompileToolDlg::OnBtnImportPath()
 {
 	TCHAR szFolderPath[MAX_PATH] = { 0 };
@@ -644,7 +670,7 @@ void CProtoCompileToolDlg::OnBtnImportPath()
 	ZeroMemory(&sInfo, sizeof(BROWSEINFO));
 
 	sInfo.pidlRoot = CSIDL_DESKTOP;//文件夹的根目录，此处为桌面
-	sInfo.lpszTitle = L"请选择引用的其他proto文件所在文件夹";
+	sInfo.lpszTitle = L"请选择引用的通用proto文件所在文件夹";
 	sInfo.ulFlags = BIF_DONTGOBELOWDOMAIN | BIF_RETURNONLYFSDIRS | BIF_EDITBOX | BIF_NEWDIALOGSTYLE;
 
 	// 显示文件夹选择对话框
@@ -670,4 +696,39 @@ void CProtoCompileToolDlg::OnEnChangeEditImportPath()
 	_editImportPath.GetWindowText(newPath);
 	// 保存配置
 	_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, newPath);
+}
+
+void CProtoCompileToolDlg::OnCbnSelchangeComboProtocLang()
+{
+	int protocLangIndex = _comboboxProtocLang.GetCurSel();
+	_config->SetInt(CFGKEY_COMMON, CFG_ProtocLang, protocLangIndex);
+	_protocLang = (ProtocLang)protocLangIndex;
+
+	// 重新读取gRPC插件地址
+	CString pluginPath;
+	switch (_protocLang)
+	{
+	case ProtocLang::CPP:
+	{
+		pluginPath = _config->GetString(CFGKEY_CPP, CFG_PluginPath);
+		if (pluginPath.IsEmpty())
+		{
+			AppendMsg(L"gRPC插件路径 例如：vcpkg\\installed\\x64-windows\\tools\\gRPC\\grpc_cpp_plugin.exe");
+		}
+	}
+	break;
+	case ProtocLang::Java:
+	{
+		pluginPath = _config->GetString(CFGKEY_Java, CFG_PluginPath);
+		if (pluginPath.IsEmpty())
+		{
+			AppendMsg(L"gRPC插件路径 例如：protoc-gen-grpc-java.exe");
+		}
+	}
+	break;
+	}
+	_editPluginPath.SetWindowText(pluginPath);
+
+	// 重新读取生成代码文件的存放路径
+	OnCbnSelchangeComboSaveType();
 }

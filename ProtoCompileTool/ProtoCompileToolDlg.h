@@ -4,6 +4,13 @@
 #include <functional>
 using namespace std;
 
+// 编译语言
+enum ProtocLang
+{
+	CPP,
+	Java,
+};
+
 class CProtoCompileToolDlg : public CDialogEx
 {
 public:
@@ -33,18 +40,21 @@ protected:
 	CEdit _editRecv;
 	CEdit _editImportPath;
 	CButton _btnGenerate;
+	CComboBox _comboboxProtocLang;
 
 	virtual BOOL OnInitDialog();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
 
 	shared_ptr<CConfigFile>	_config = nullptr;
+	ProtocLang _protocLang = ProtocLang::CPP; // 当前编译语言
 
 	void LoadConfig();
 	bool IsProtoFileHasService(const CString& protoPath);
 	bool RunProtoc(const CString& protocPath, CString param);
 	void AppendMsg(const WCHAR* msg);
 	LRESULT OnFunction(WPARAM wParam, LPARAM lParam);
+	CString GetProtocCmd();
 
 	afx_msg void OnBtnProtocPath();
 	afx_msg void OnBtnPluginPath();
@@ -59,4 +69,5 @@ protected:
 	afx_msg void OnEnChangeEditImportPath();
 	afx_msg void OnEnChangeEditSavePath();
 	afx_msg void OnEnChangeEditProtoPath();
+	afx_msg void OnCbnSelchangeComboProtocLang();
 };
