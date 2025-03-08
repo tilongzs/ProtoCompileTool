@@ -150,13 +150,13 @@ void CProtoCompileToolDlg::LoadConfig()
 			_config->SetString(CFGKEY_COMMON, CFG_ProtoImportPath, L"");
 
 			// 提示路径
-			AppendMsg(L"通用proto（如empty.proto）的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
+			AppendMsg(L"通用proto（如empty.proto）的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include\\google\\protobuf");
 		}
 	}
 	else
 	{
 		// 提示路径
-		AppendMsg(L"通用的proto（如empty.proto）的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include");
+		AppendMsg(L"通用的proto（如empty.proto）的inlucde路径 例如：vcpkg\\installed\\x64-windows\\include\\google\\protobuf");
 	}
 
 	OnCbnSelchangeComboProtocLang();
